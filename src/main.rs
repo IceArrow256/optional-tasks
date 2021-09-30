@@ -1,5 +1,6 @@
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
@@ -22,9 +23,28 @@ impl Tasks {
         Tasks { data }
     }
 
-    #[allow(dead_code)]
-    fn add(&mut self, id: u16, description: String) {
-        self.data.push(Task { id, description });
+    /// add task to tasks
+    fn add(&mut self, description: String) {
+        let mut id = 0u16;
+        for task in &self.data {
+            if task.id > id {
+                id = if task.id > id { task.id } else { id };
+            }
+        }
+        self.data.push(Task {
+            id: id + 1,
+            description,
+        });
+    }
+    fn del(&mut self, id: u16) {
+        match self.data.iter().position(|task| task.id == id) {
+            Some(position) => {
+                self.data.remove(position);
+            }
+            _ => {
+                println!("No tasks specified.");
+            }
+        }
     }
 }
 
@@ -45,8 +65,30 @@ impl fmt::Display for Tasks {
 }
 
 fn main() {
-    #[allow(unused_mut)]
+    let args: Vec<String> = env::args().collect();
     let mut tasks = load_tasks();
+    if args.len() > 1 {
+        match args[1].as_ref() {
+            "add" => {
+                if args.len() > 2 {
+                    let description = args[2..].join(" ");
+                    tasks.add(description.to_owned());
+                }
+            }
+            _ => {
+                let id: Option<u16> = match args[1].parse() {
+                    Ok(num) => Some(num),
+                    Err(_) => None,
+                };
+                if let Some(id) = id {
+                    match args[2].as_ref() {
+                        "del" => tasks.del(id),
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
     println!("{}", tasks);
     save_task(tasks);
 }
